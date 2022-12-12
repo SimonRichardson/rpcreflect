@@ -282,11 +282,6 @@ func newMethod(m reflect.Method, receiverKind reflect.Kind) *ObjMethod {
 	}
 	t := m.Type
 	switch t.NumIn() - receiverArgCount {
-	case 0:
-		// Method() ...
-		assemble = func(_ context.Context, arg reflect.Value) []reflect.Value {
-			return nil
-		}
 	case 2:
 		// Method(context.Context, T) ...
 		contextParam := t.In(receiverArgCount)
@@ -298,16 +293,11 @@ func newMethod(m reflect.Method, receiverKind reflect.Kind) *ObjMethod {
 			return []reflect.Value{reflect.ValueOf(ctx), arg}
 		}
 	case 1:
-		// Method([context.Context,]T) ...
+		// Method(context.Context) ...
 		param := t.In(receiverArgCount)
 		if contextType.AssignableTo(param) {
 			assemble = func(ctx context.Context, _ reflect.Value) []reflect.Value {
 				return []reflect.Value{reflect.ValueOf(ctx)}
-			}
-		} else {
-			p.Params = param
-			assemble = func(_ context.Context, arg reflect.Value) []reflect.Value {
-				return []reflect.Value{arg}
 			}
 		}
 	default:
