@@ -30,9 +30,6 @@ var ErrMethodNotFound = errors.New("no such method")
 // Type holds information about a type that implements RPC server methods,
 // a root-level RPC type.
 type Type struct {
-	// root holds the root type.
-	root reflect.Type
-
 	// method maps from root-object method name to
 	// information about that method. The term "obtain"
 	// is because these methods obtain an object to
@@ -63,6 +60,18 @@ func (r *Type) Method(name string) (RootMethod, error) {
 		return RootMethod{}, ErrMethodNotFound
 	}
 	return *m, nil
+}
+
+// RemoveMethod removes the method with the given name from the type.
+// This is useful for removing methods that are not supported by the
+// server. It returns whether the method was found.
+func (r *Type) RemoveMethod(name string) bool {
+	if _, ok := r.method[name]; !ok {
+		return false
+	}
+	delete(r.method, name)
+	r.discarded = append(r.discarded, name)
+	return true
 }
 
 func (r *Type) DiscardedMethods() []string {
