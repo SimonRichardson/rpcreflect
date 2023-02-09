@@ -195,6 +195,18 @@ func (t *ObjType) Method(name string) (ObjMethod, error) {
 	return *m, nil
 }
 
+// RemoveMethod removes the method with the given name from the type.
+// This is useful for removing methods that are not supported by the
+// server. It returns whether the method was found.
+func (r *ObjType) RemoveMethod(name string) bool {
+	if _, ok := r.method[name]; !ok {
+		return false
+	}
+	delete(r.method, name)
+	r.discarded = append(r.discarded, name)
+	return true
+}
+
 // DiscardedMethods returns the names of all methods that cannot
 // implement RPC calls because their type signature is inappropriate.
 func (t *ObjType) DiscardedMethods() []string {
