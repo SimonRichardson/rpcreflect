@@ -153,7 +153,7 @@ func (*reflectSuite) TestFindMethodAcceptsAnyVersion(c *gc.C) {
 	c.Assert(m.ResultType(), gc.Equals, reflect.TypeOf(stringVal{}))
 }
 
-func (*reflectSuite) TestRemoveMethod(c *gc.C) {
+func (*reflectSuite) TestTypeRemoveMethod(c *gc.C) {
 	rtype := rpcreflect.TypeOf(reflect.TypeOf(&Root{}))
 	c.Assert(rtype.DiscardedMethods(), gc.DeepEquals, []string{
 		"Discard1",
@@ -191,4 +191,51 @@ func (*reflectSuite) TestRemoveMethod(c *gc.C) {
 		c.Assert(m.ObjType, gc.Equals, rpcreflect.ObjTypeOf(expectGoType))
 		c.Assert(m.ObjType.GoType(), gc.Equals, expectGoType)
 	}
+}
+
+func (*reflectSuite) TestObjTypeRemoveMethod(c *gc.C) {
+	objType := rpcreflect.ObjTypeOf(reflect.TypeOf(&SimpleMethods{}))
+	c.Assert(objType.DiscardedMethods(), gc.DeepEquals, []string{
+		"Discard1",
+		"Discard2",
+		"Discard3",
+		"Discard4",
+	})
+	expect := map[string]*rpcreflect.ObjMethod{
+		"SliceArg": {
+			Params: reflect.TypeOf(struct{ X []string }{}),
+			Result: reflect.TypeOf(stringVal{}),
+		},
+	}
+	for narg := 0; narg < 2; narg++ {
+		for nret := 0; nret < 2; nret++ {
+			for nerr := 0; nerr < 2; nerr++ {
+				retErr := nerr != 0
+				var m rpcreflect.ObjMethod
+				if narg > 0 {
+					m.Params = reflect.TypeOf(stringVal{})
+				}
+				if nret > 0 {
+					m.Result = reflect.TypeOf(stringVal{})
+				}
+				expect[callName(narg, nret, retErr)] = &m
+			}
+		}
+	}
+	c.Assert(objType.MethodNames(), gc.HasLen, len(expect))
+	for name, expectMethod := range expect {
+		m, err := objType.Method(name)
+		c.Check(err, jc.ErrorIsNil)
+		c.Assert(m, gc.NotNil)
+		c.Check(m.Call, gc.NotNil)
+		c.Check(m.Params, gc.Equals, expectMethod.Params)
+		c.Check(m.Result, gc.Equals, expectMethod.Result)
+	}
+
+	ok := objType.RemoveMethod("SliceArg")
+	c.Assert(ok, jc.IsTrue)
+
+	m, err := objType.Method("SliceArg")
+	c.Check(err, gc.Equals, rpcreflect.ErrMethodNotFound)
+	c.Check(m, gc.DeepEquals, rpcreflect.ObjMethod{})
 }
